@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>壁掛け気象ダッシュボード</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      color: #ffffff;
+      font-family: 'Helvetica Neue', Arial, 'メイリオ', sans-serif;
+      padding: 15px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      /* 背景色の変化を滑らかにする transition */
+      transition: background 1.5s ease-in-out;
+    }
+
+    /* ===== 12ヶ月の背景グラデーション（少し色味を分かりやすく調整） ===== */
+body.month-1  { background: radial-gradient(circle at 50% 30%, #4a0e1c 0%, #05070a 100%); } /* 1月: 茜（深赤） */
+body.month-2  { background: radial-gradient(circle at 50% 30%, #36124d 0%, #05070a 100%); } /* 2月: 菫（深紫） */
+body.month-3  { background: radial-gradient(circle at 50% 30%, #4d1c31 0%, #05070a 100%); } /* 3月: 桜（深ピンク） */
+body.month-4  { background: radial-gradient(circle at 50% 30%, #123d29 0%, #05070a 100%); } /* 4月: 新緑（深緑） */
+body.month-5  { background: radial-gradient(circle at 50% 30%, #0d4234 0%, #05070a 100%); } /* 5月: 薫風（エメラルド） */
+body.month-6  { background: radial-gradient(circle at 50% 30%, #152b4d 0%, #05070a 100%); } /* 6月: 紫陽花（あじさいブルー） */
+body.month-7  { background: radial-gradient(circle at 50% 30%, #0f3954 0%, #05070a 100%); } /* 7月: 涼海（シアンブルー） */
+body.month-8  { background: radial-gradient(circle at 50% 30%, #4d2b12 0%, #05070a 100%); } /* 8月: 夕立（オレンジアンバー） */
+body.month-9  { background: radial-gradient(circle at 50% 30%, #1f2d4d 0%, #05070a 100%); } /* 9月: 月夜（ミッドナイト） */
+body.month-10 { background: radial-gradient(circle at 50% 30%, #4a230f 0%, #05070a 100%); } /* 10月: 豊秋（ワインオレンジ） */
+body.month-11 { background: radial-gradient(circle at 50% 30%, #3d1712 0%, #05070a 100%); } /* 11月: 紅葉（バーガンディ） */
+body.month-12 { background: radial-gradient(circle at 50% 30%, #0e3b22 0%, #05070a 100%); } /* 12月: 聖夜（フォレストグリーン） */
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #clock {
+      font-size: 4.8rem;
+      font-weight: bold;
+      line-height: 1;
+      letter-spacing: 2px;
+      color: #ffffff;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    }
+    #date {
+      font-size: 1.6rem;
+      color: #cbd5e1;
+      margin-top: 8px;
+    }
+
+    /* 左右2列のメインコンテナ */
+    .dashboard-grid {
+      display: flex;
+      gap: 15px;
+    }
+
+    /* 各エリアの枠 */
+    .area-column {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+    }
+
+    /* 現在の天気カード */
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .card-title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #38bdf8;
+      margin-bottom: 5px;
+    }
+    .temp-main {
+      font-size: 2.6rem;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+    }
+    .details {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      margin-top: 5px;
+    }
+
+    /* 各ブロックの見出し */
+    .sub-title {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 4px;
+    }
+
+    /* 予報リスト */
+    .forecast-list {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
+    .forecast-item {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px;
+      min-width: 70px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .forecast-item .time {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    .forecast-item .icon {
+      margin: 2px 0;
+    }
+    .forecast-item .temp {
+      font-size: 0.95rem;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+    }
+    .forecast-item .temp-range {
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .forecast-item .temp-max {
+      color: #f87171;
+      font-weight: bold;
+    }
+    .forecast-item .temp-min {
+      color: #38bdf8;
+      font-weight: bold;
+    }
+    .forecast-item .humidity {
+      font-size: 0.75rem;
+      color: #60a5fa;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body id="body-root">
+
+  <!-- 時計エリア -->
+  <header>
+    <div id="clock">00:00:00</div>
+    <div id="date">----年--月--日(--)</div>
+  </header>
+
+  <!-- 左右2列にAREA_1とAREA_2を配置 -->
+  <div class="dashboard-grid">
+    
+    <!-- エリア1 列 -->
+    <div class="area-column">
+      <div class="card" id="area1-current"><div class="card-title">エリア1</div>読み込み中...</div>
+      
+      <div>
+        <div class="sub-title">▼ 3時間ごとの予報</div>
+        <div class="forecast-list" id="area1-hourly">読み込み中...</div>
+      </div>
+      
+      <div>
+        <div class="sub-title">▼ 週間予報（最高 / 最低）</div>
+        <div class="forecast-list" id="area1-daily">読み込み中...</div>
+      </div>
+    </div>
+
+    <!-- エリア2 列 -->
+    <div class="area-column">
+      <div class="card" id="area2-current"><div class="card-title">エリア2</div>読み込み中...</div>
+      
+      <div>
+        <div class="sub-title">▼ 3時間ごとの予報</div>
+        <div class="forecast-list" id="area2-hourly">読み込み中...</div>
+      </div>
+      
+      <div>
+        <div class="sub-title">▼ 週間予報（最高 / 最低）</div>
+        <div class="forecast-list" id="area2-daily">読み込み中...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ===== 設定情報（ご自身のデータに書き換えてください） =====
+    const API_KEY = '533cf8da09f4a533b46fe9b63385d095'; // 取得した32桁のAPIキー
+    const AREA_1 = { name: '大牟田', lat: 33.041, lon: 130.471 }; // 1つ目の場所
+    const AREA_2 = { name: '熊本', lat: 32.715, lon: 130.733 }; // 2つ目の場所
+    // ========================================================
+
+    // 時計の更新と月別背景クラスの設定
+    function updateClock() {
+      const now = new Date();
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      
+      document.getElementById('clock').textContent =
+        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      document.getElementById('date').textContent =
+        `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 (${days[now.getDay()]})`;
+
+      // 現在の「月」に合わせて body に month-X クラスを付与
+        const month = now.getMonth() + 1;
+      document.getElementById('body-root').className = `month-${month}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 天気APIのデータ取得
+    async function fetchWeather() {
+      if (API_KEY === 'YOUR_API_KEY_HERE') {
+        alert('APIキーが設定されていません。コードの「API_KEY」部分を書き換えてください。');
+        return;
+      }
+
+      try {
+        const res1 = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${AREA_1.lat}&lon=${AREA_1.lon}&appid=${API_KEY}&units=metric&lang=ja`);
+        const data1 = await res1.json();
+
+        const res2 = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${AREA_2.lat}&lon=${AREA_2.lon}&appid=${API_KEY}&units=metric&lang=ja`);
+        const data2 = await res2.json();
+
+        // エリア1 描画
+        renderCurrent('area1-current', AREA_1.name, data1.list[0]);
+        renderHourly('area1-hourly', data1.list.slice(0, 8));
+        renderDaily('area1-daily', data1.list);
+
+        // エリア2 描画
+        renderCurrent('area2-current', AREA_2.name, data2.list[0]);
+        renderHourly('area2-hourly', data2.list.slice(0, 8));
+        renderDaily('area2-daily', data2.list);
+
+      } catch (err) {
+        console.error('天気データの取得失敗:', err);
+      }
+    }
+
+    function getIconUrl(iconCode) {
+      return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+    }
+
+    function renderCurrent(elementId, name, item) {
+      document.getElementById(elementId).innerHTML = `
+        <div class="card-title">${name}</div>
+        <img src="${getIconUrl(item.weather[0].icon)}" width="50">
+        <div class="temp-main">${Math.round(item.main.temp)}℃</div>
+        <div class="details">湿度: ${item.main.humidity}% / ${item.weather[0].description}</div>
+      `;
+    }
+
+    function renderHourly(elementId, list) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = list.map(item => {
+        const time = new Date(item.dt * 1000).getHours() + '時';
+        return `
+          <div class="forecast-item">
+            <div class="time">${time}</div>
+            <img class="icon" src="${getIconUrl(item.weather[0].icon)}" width="35">
+            <div class="temp">${Math.round(item.main.temp)}℃</div>
+            <div class="humidity">💧${item.main.humidity}%</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDaily(elementId, list) {
+      const container = document.getElementById(elementId);
+      
+      const dailyMap = {};
+      list.forEach(item => {
+        const dateKey = item.dt_txt.split(' ')[0];
+        if (!dailyMap[dateKey]) dailyMap[dateKey] = [];
+        dailyMap[dateKey].push(item);
+      });
+
+      const daysKeys = Object.keys(dailyMap).slice(0, 6);
+      const htmlContent = daysKeys.map(dateKey => {
+        const items = dailyMap[dateKey];
+        
+        let maxTemp = -99;
+        let minTemp = 99;
+        let sumHumidity = 0;
+        let noonIcon = items[0].weather[0].icon;
+
+        items.forEach(item => {
+          if (item.main.temp_max > maxTemp) maxTemp = item.main.temp_max;
+          if (item.main.temp_min < minTemp) minTemp = item.main.temp_min;
+          sumHumidity += item.main.humidity;
+          
+          if (item.dt_txt.includes("12:00:00")) {
+            noonIcon = item.weather[0].icon;
+          }
+        });
+
+        const avgHumidity = Math.round(sumHumidity / items.length);
+        const dateObj = new Date(dateKey);
+        const dateStr = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
+
+        return `
+          <div class="forecast-item">
+            <div class="time">${dateStr}</div>
+            <img class="icon" src="${getIconUrl(noonIcon)}" width="35">
+            <div class="temp-range">
+              <span class="temp-max">${Math.round(maxTemp)}°</span> / 
+              <span class="temp-min">${Math.round(minTemp)}°</span>
+            </div>
+            <div class="humidity">💧${avgHumidity}%</div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = htmlContent;
+    }
+
+    fetchWeather();
+    setInterval(fetchWeather, 30 * 60 * 1000);
+  </script>
+</body>
+</html>
